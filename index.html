@@ -74,6 +74,7 @@
     margin: 0 auto;
     padding: 20px 16px 12px;
     overflow: hidden;
+    position: relative;
   }
 
   #status{
@@ -103,30 +104,44 @@
     line-height:1.6;
   }
 
-  .row{ display:flex; }
-  .row.me{ justify-content:flex-end; }
-  .row.them{ justify-content:flex-start; }
+  /* message wrapper: sized to content, capped, no ambiguous flex-basis nesting */
+  .msg{
+    display:flex;
+    flex-direction:column;
+    max-width: 80%;
+  }
+  .msg.me{ align-self:flex-end; align-items:flex-end; }
+  .msg.them{ align-self:flex-start; align-items:flex-start; }
 
   .bubble{
-    max-width: 74%;
+    display:inline-block;
+    max-width:100%;
     padding: 10px 14px;
     border-radius: 16px;
     line-height: 1.5;
     font-size: 15px;
     box-shadow: 0 1px 2px rgba(47,42,36,0.06);
     white-space: pre-wrap;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
-  .row.me .bubble{
+  .msg.me .bubble{
     background: var(--bubble-me);
     color: #fbfaf6;
     border-bottom-right-radius: 4px;
   }
-  .row.them .bubble{
+  .msg.them .bubble{
     background: var(--bubble-them);
     border: 1px solid var(--line);
     color: var(--ink);
     border-bottom-left-radius: 4px;
+  }
+  .bubble.sticker{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none;
+    font-size: 46px;
+    padding: 0;
+    line-height:1.1;
   }
   .meta{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -135,15 +150,16 @@
     margin-top: 3px;
     padding: 0 4px;
   }
-  .row.me .meta{ text-align:right; }
   .name{ font-weight:600; color: var(--sage-deep); }
-  .row.me .name{ color: #b57849; }
+  .msg.me .name{ color: #b57849; }
 
   form{
     display:flex;
+    align-items:flex-end;
     gap: 8px;
     padding: 12px 4px 4px;
     border-top: 1px solid var(--line);
+    position:relative;
   }
   textarea{
     flex:1;
@@ -166,13 +182,73 @@
     border:none;
     border-radius: 14px;
     padding: 0 20px;
+    height: 42px;
     font-size: 14px;
     font-weight:600;
     cursor:pointer;
     transition: background 0.15s ease;
+    flex-shrink:0;
   }
   button:hover{ background: var(--sage-deep); }
   button:disabled{ background:#c8c3b6; cursor:default; }
+
+  #emoji-toggle, #sticker-toggle{
+    background: #fff;
+    border: 1px solid var(--line);
+    color: var(--sage-deep);
+    width: 42px;
+    height: 42px;
+    padding:0;
+    font-size: 19px;
+    border-radius: 14px;
+    flex-shrink:0;
+  }
+  #emoji-toggle:hover, #sticker-toggle:hover{ background: #fff8ec; }
+
+  #emoji-panel, #sticker-panel{
+    display:none;
+    position:absolute;
+    bottom: 60px;
+    left: 4px;
+    right: 4px;
+    max-height: 220px;
+    overflow-y:auto;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(47,42,36,0.15);
+    padding: 10px;
+    z-index: 15;
+  }
+  #emoji-panel.open, #sticker-panel.open{ display:grid; }
+  #emoji-panel{
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+  }
+  #emoji-panel button{
+    all:unset;
+    cursor:pointer;
+    font-size: 21px;
+    text-align:center;
+    padding: 6px 0;
+    border-radius: 8px;
+    height:auto;
+  }
+  #emoji-panel button:hover{ background: #f2ede4; }
+  #sticker-panel{
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  #sticker-panel button{
+    all:unset;
+    cursor:pointer;
+    font-size: 30px;
+    text-align:center;
+    padding: 10px 0;
+    border-radius: 10px;
+    height:auto;
+  }
+  #sticker-panel button:hover{ background: #f2ede4; }
 
   /* name overlay */
   #name-overlay{
@@ -241,9 +317,15 @@
 <main>
   <div id="status">Menyiapkan ruang…</div>
   <div id="messages"><div class="empty-state">Belum ada pesan. Mulai dari kamu ya.</div></div>
+
   <form id="send-form">
+    <button type="button" id="emoji-toggle" title="Emoji">🙂</button>
+    <button type="button" id="sticker-toggle" title="Stiker">✨</button>
     <textarea id="msg-input" rows="1" placeholder="Tulis sesuatu…" maxlength="2000"></textarea>
     <button type="submit" id="send-btn">Kirim</button>
+
+    <div id="emoji-panel"></div>
+    <div id="sticker-panel"></div>
   </form>
 </main>
 
@@ -251,6 +333,15 @@
 (function(){
   const API_BASE = "https://jsonblob.com/api/jsonBlob";
   const POLL_MS = 4000;
+
+  const EMOJIS = ["😀","😄","😊","😍","🥰","😘","😉","😜","🤪","🤔",
+                  "😅","😂","🥲","😭","😢","😤","😡","🥺","😴","🤗",
+                  "😎","🙄","😬","🤝","👍","👎","🙏","👏","💪","✌️",
+                  "❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💯",
+                  "🔥","✨","🎉","🎮","☕","🌿","🌙","⭐","🌸","☀️"];
+
+  const STICKERS = ["🕊️ damai","🌿 santai","☕ istirahat dulu","🤝 kita bicarain",
+                     "💚 aku dengerin","🙏 makasih ya","😌 pelan-pelan","🎮 main bareng?"];
 
   const params = new URLSearchParams(location.search);
   let roomId = params.get('room');
@@ -267,6 +358,53 @@
   const overlay = document.getElementById('name-overlay');
   const nameInput = document.getElementById('name-input');
   const nameSubmit = document.getElementById('name-submit');
+  const emojiToggle = document.getElementById('emoji-toggle');
+  const stickerToggle = document.getElementById('sticker-toggle');
+  const emojiPanel = document.getElementById('emoji-panel');
+  const stickerPanel = document.getElementById('sticker-panel');
+
+  EMOJIS.forEach(function(e){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = e;
+    b.addEventListener('click', function(){ insertAtCursor(e); });
+    emojiPanel.appendChild(b);
+  });
+  STICKERS.forEach(function(s){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = s.split(' ')[0];
+    b.title = s;
+    b.addEventListener('click', function(){ sendSticker(s); closePanels(); });
+    stickerPanel.appendChild(b);
+  });
+
+  function closePanels(){
+    emojiPanel.classList.remove('open');
+    stickerPanel.classList.remove('open');
+  }
+  emojiToggle.addEventListener('click', function(){
+    const willOpen = !emojiPanel.classList.contains('open');
+    closePanels();
+    if(willOpen) emojiPanel.classList.add('open');
+  });
+  stickerToggle.addEventListener('click', function(){
+    const willOpen = !stickerPanel.classList.contains('open');
+    closePanels();
+    if(willOpen) stickerPanel.classList.add('open');
+  });
+  document.addEventListener('click', function(e){
+    if(!form.contains(e.target)) closePanels();
+  });
+
+  function insertAtCursor(text){
+    const start = input.selectionStart || input.value.length;
+    const end = input.selectionEnd || input.value.length;
+    input.value = input.value.slice(0,start) + text + input.value.slice(end);
+    const pos = start + text.length;
+    input.focus();
+    input.setSelectionRange(pos,pos);
+  }
 
   function setStatus(text){ statusEl.textContent = text; }
 
@@ -325,11 +463,11 @@
       const side = mine ? 'me' : 'them';
       const safeName = escapeHtml(m.sender);
       const safeText = escapeHtml(m.text);
-      return '<div class="row ' + side + '">' +
-        '<div>' +
-          '<div class="bubble">' + safeText + '</div>' +
+      const isSticker = m.type === 'sticker';
+      const bubbleClass = 'bubble' + (isSticker ? ' sticker' : '');
+      return '<div class="msg ' + side + '">' +
+          '<div class="' + bubbleClass + '">' + safeText + '</div>' +
           '<div class="meta">' + (mine ? '' : '<span class="name">' + safeName + '</span> · ') + fmtTime(m.ts) + '</div>' +
-        '</div>' +
       '</div>';
     }).join('');
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -368,24 +506,35 @@
     }
   }
 
-  form.addEventListener('submit', async function(e){
-    e.preventDefault();
-    const text = input.value.trim();
+  async function sendMessage(text, type){
     if(!text || !roomId) return;
     sendBtn.disabled = true;
     try{
       const msgs = await fetchMessages();
-      msgs.push({sender: myName, text: text, ts: Date.now()});
+      msgs.push({sender: myName, text: text, ts: Date.now(), type: type || 'text'});
       await pushMessages(msgs);
-      input.value = '';
       lastCount = msgs.length;
       render(msgs);
     }catch(err){
       setStatus('Pesan gagal terkirim, coba lagi.');
     }finally{
       sendBtn.disabled = false;
-      input.focus();
     }
+  }
+
+  function sendSticker(s){
+    sendMessage(s, 'sticker');
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const text = input.value.trim();
+    if(!text) return;
+    closePanels();
+    await sendMessage(text, 'text');
+    input.value = '';
+    input.style.height = 'auto';
+    input.focus();
   });
 
   input.addEventListener('keydown', function(e){
