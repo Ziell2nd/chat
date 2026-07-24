@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruang Bicara</title>
+<style>
+  :root{
+    --paper: #f2ede4;
+    --ink: #2f2a24;
+    --sage: #7c8f6f;
+    --sage-deep: #566349;
+    --clay: #c98a5e;
+    --line: #ded4c2;
+    --bubble-me: #7c8f6f;
+    --bubble-them: #ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family: 'Iowan Old Style','Palatino Linotype',Georgia,serif;
+    background: var(--paper);
+    color: var(--ink);
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  header{
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--line);
+    text-align:center;
+  }
+  header .eyebrow{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--sage-deep);
+    margin-bottom: 6px;
+  }
+  header h1{
+    margin:0;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: 0.01em;
+  }
+  header .sub{
+    margin-top:4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 12.5px;
+    color: #8a8074;
+  }
+
+  #room-banner{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 12px;
+    text-align:center;
+    padding: 8px 16px;
+    background: #fff8ec;
+    border-bottom: 1px solid var(--line);
+    color: var(--sage-deep);
+    display:none;
+  }
+  #room-banner a{color: var(--clay); font-weight:600; word-break:break-all;}
+
+  main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    max-width: 640px;
+    width:100%;
+    margin: 0 auto;
+    padding: 20px 16px 12px;
+    overflow: hidden;
+  }
+
+  #status{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 11.5px;
+    color: #a99e8c;
+    text-align:center;
+    margin-bottom: 10px;
+    min-height: 14px;
+  }
+
+  #messages{
+    flex:1;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+    padding: 4px 4px 16px;
+  }
+
+  .empty-state{
+    margin:auto;
+    text-align:center;
+    color:#a99e8c;
+    font-size: 14px;
+    max-width: 280px;
+    line-height:1.6;
+  }
+
+  .row{ display:flex; }
+  .row.me{ justify-content:flex-end; }
+  .row.them{ justify-content:flex-start; }
+
+  .bubble{
+    max-width: 74%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    line-height: 1.5;
+    font-size: 15px;
+    box-shadow: 0 1px 2px rgba(47,42,36,0.06);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .row.me .bubble{
+    background: var(--bubble-me);
+    color: #fbfaf6;
+    border-bottom-right-radius: 4px;
+  }
+  .row.them .bubble{
+    background: var(--bubble-them);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-bottom-left-radius: 4px;
+  }
+  .meta{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 10.5px;
+    color: #a99e8c;
+    margin-top: 3px;
+    padding: 0 4px;
+  }
+  .row.me .meta{ text-align:right; }
+  .name{ font-weight:600; color: var(--sage-deep); }
+  .row.me .name{ color: #b57849; }
+
+  form{
+    display:flex;
+    gap: 8px;
+    padding: 12px 4px 4px;
+    border-top: 1px solid var(--line);
+  }
+  textarea{
+    flex:1;
+    resize:none;
+    border: 1px solid var(--line);
+    background:#fff;
+    border-radius: 14px;
+    padding: 11px 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14.5px;
+    line-height:1.4;
+    color: var(--ink);
+    max-height: 120px;
+  }
+  textarea:focus{ outline: 2px solid var(--sage); outline-offset: 1px; }
+  button{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--sage);
+    color: #fbfaf6;
+    border:none;
+    border-radius: 14px;
+    padding: 0 20px;
+    font-size: 14px;
+    font-weight:600;
+    cursor:pointer;
+    transition: background 0.15s ease;
+  }
+  button:hover{ background: var(--sage-deep); }
+  button:disabled{ background:#c8c3b6; cursor:default; }
+
+  /* name overlay */
+  #name-overlay{
+    position:fixed; inset:0;
+    background: rgba(47,42,36,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding: 20px;
+    z-index: 20;
+  }
+  #name-card{
+    background: var(--paper);
+    border-radius: 18px;
+    padding: 28px 26px;
+    max-width: 340px;
+    width:100%;
+    text-align:center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+  }
+  #name-card .eyebrow{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    color: var(--sage-deep);
+    margin-bottom: 8px;
+  }
+  #name-card h2{ margin: 0 0 6px; font-weight:500; font-size:19px; }
+  #name-card p{ margin: 0 0 18px; font-size: 13px; color:#8a8074; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height:1.5;}
+  #name-input{
+    width:100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  #name-input:focus{ outline: 2px solid var(--sage); outline-offset:1px; }
+  #name-card button{ width:100%; padding: 11px 0; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="name-overlay">
+  <div id="name-card">
+    <div class="eyebrow">Sebelum masuk</div>
+    <h2>Siapa namamu?</h2>
+    <p>Nama ini dipakai supaya pesan kalian berdua bisa dibedakan. Diminta lagi tiap buka halaman ini.</p>
+    <input id="name-input" type="text" placeholder="Nama kamu" maxlength="24" autocomplete="off">
+    <button id="name-submit">Masuk ke ruang bicara</button>
+  </div>
+</div>
+
+<header>
+  <div class="eyebrow">Ruang Bicara</div>
+  <h1>Cukup ngobrol di sini</h1>
+  <div class="sub">Pesan tersimpan bersama, muat ulang untuk lihat balasan baru</div>
+</header>
+
+<div id="room-banner"></div>
+
+<main>
+  <div id="status">Menyiapkan ruang…</div>
+  <div id="messages"><div class="empty-state">Belum ada pesan. Mulai dari kamu ya.</div></div>
+  <form id="send-form">
+    <textarea id="msg-input" rows="1" placeholder="Tulis sesuatu…" maxlength="2000"></textarea>
+    <button type="submit" id="send-btn">Kirim</button>
+  </form>
+</main>
+
+<script>
+(function(){
+  const API_BASE = "https://jsonblob.com/api/jsonBlob";
+  const POLL_MS = 4000;
+
+  const params = new URLSearchParams(location.search);
+  let roomId = params.get('room');
+  let myName = "";
+  let lastCount = 0;
+  let polling = null;
+
+  const statusEl = document.getElementById('status');
+  const messagesEl = document.getElementById('messages');
+  const bannerEl = document.getElementById('room-banner');
+  const form = document.getElementById('send-form');
+  const input = document.getElementById('msg-input');
+  const sendBtn = document.getElementById('send-btn');
+  const overlay = document.getElementById('name-overlay');
+  const nameInput = document.getElementById('name-input');
+  const nameSubmit = document.getElementById('name-submit');
+
+  function setStatus(text){ statusEl.textContent = text; }
+
+  function showRoomLink(){
+    const link = location.origin + location.pathname + '?room=' + roomId;
+    bannerEl.innerHTML = 'Ruang ini siap. Kirim link ini ke satu orang lagi: <br><a href="' + link + '">' + link + '</a>';
+    bannerEl.style.display = 'block';
+  }
+
+  async function createRoom(){
+    setStatus('Membuat ruang baru…');
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({messages: []})
+    });
+    if(!res.ok) throw new Error('gagal membuat ruang');
+    const location_header = res.headers.get('Location');
+    const id = location_header ? location_header.split('/').pop() : null;
+    if(!id) throw new Error('tidak dapat id ruang');
+    roomId = id;
+    const url = new URL(window.location);
+    url.searchParams.set('room', roomId);
+    history.replaceState(null, '', url);
+    showRoomLink();
+  }
+
+  async function fetchMessages(){
+    const res = await fetch(API_BASE + '/' + roomId);
+    if(!res.ok) throw new Error('gagal ambil pesan');
+    const data = await res.json();
+    return data.messages || [];
+  }
+
+  async function pushMessages(msgs){
+    const res = await fetch(API_BASE + '/' + roomId, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({messages: msgs})
+    });
+    if(!res.ok) throw new Error('gagal kirim pesan');
+  }
+
+  function fmtTime(ts){
+    const d = new Date(ts);
+    return d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function render(msgs){
+    if(msgs.length === 0){
+      messagesEl.innerHTML = '<div class="empty-state">Belum ada pesan. Mulai dari kamu ya.</div>';
+      return;
+    }
+    messagesEl.innerHTML = msgs.map(m => {
+      const mine = m.sender === myName;
+      const side = mine ? 'me' : 'them';
+      const safeName = escapeHtml(m.sender);
+      const safeText = escapeHtml(m.text);
+      return '<div class="row ' + side + '">' +
+        '<div>' +
+          '<div class="bubble">' + safeText + '</div>' +
+          '<div class="meta">' + (mine ? '' : '<span class="name">' + safeName + '</span> · ') + fmtTime(m.ts) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  async function poll(){
+    try{
+      const msgs = await fetchMessages();
+      if(msgs.length !== lastCount){
+        lastCount = msgs.length;
+        render(msgs);
+      }
+      setStatus('Tersambung');
+    }catch(e){
+      setStatus('Tidak bisa memuat pesan, coba lagi…');
+    }
+  }
+
+  async function init(){
+    try{
+      if(!roomId){
+        await createRoom();
+      } else {
+        showRoomLink();
+      }
+      await poll();
+      polling = setInterval(poll, POLL_MS);
+    }catch(e){
+      setStatus('Gagal menyiapkan ruang. Muat ulang halaman.');
+    }
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const text = input.value.trim();
+    if(!text || !roomId) return;
+    sendBtn.disabled = true;
+    try{
+      const msgs = await fetchMessages();
+      msgs.push({sender: myName, text: text, ts: Date.now()});
+      await pushMessages(msgs);
+      input.value = '';
+      lastCount = msgs.length;
+      render(msgs);
+    }catch(err){
+      setStatus('Pesan gagal terkirim, coba lagi.');
+    }finally{
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  });
+
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  input.addEventListener('input', function(){
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+
+  nameSubmit.addEventListener('click', function(){
+    const val = nameInput.value.trim();
+    if(!val) { nameInput.focus(); return; }
+    myName = val;
+    overlay.style.display = 'none';
+    init();
+  });
+  nameInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ nameSubmit.click(); }
+  });
+  nameInput.focus();
+})();
+</script>
+
+</body>
+</html>
