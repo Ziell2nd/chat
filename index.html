@@ -344,8 +344,8 @@
 
 <header>
   <div class="eyebrow">Ruang Bicara</div>
-  <h1>Ngobrol yuk</h1>
-  <div class="sub">Pesan tersimpan bersama, jika reload mohon isi nama yang sama</div>
+  <h1>Cukup ngobrol di sini</h1>
+  <div class="sub">Pesan tersimpan bersama, muat ulang untuk lihat balasan baru</div>
 </header>
 
 <div id="room-banner"></div>
@@ -458,7 +458,7 @@
       reader.onerror = function(){ reject(new Error('gagal membaca file')); };
       reader.onload = function(){
         const img = new Image();
-        img.onerror = function(){ reject(new Error('gagal memuat gambar')); };
+        img.onerror = function(){ reject(new Error('format gambar tidak didukung. coba screenshot lalu simpan sebagai JPG/PNG')); };
         img.onload = function(){
           let w = img.width, h = img.height;
           if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
@@ -466,9 +466,46 @@
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
-          ctx.clearRect(0,0,w,h);
+
+          // isi putih dulu sebagai dasar (untuk foto tanpa transparansi / JPEG)
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0,0,w,h);
           ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/png'));
+
+          const TARGET_CHARS = 120000; // batas aman ukuran base64 (~90KB)
+
+          // coba PNG dulu (biar stiker transparan tetap bagus), turunkan ukuran kalau kebesaran
+          let dims = [maxDim, 180, 140, 100, 70];
+          let idx = 0;
+          function tryPng(){
+            const c2 = document.createElement('canvas');
+            const d = dims[idx];
+            let ww = w, hh = h;
+            if(ww > hh){ if(ww > d){ hh = Math.round(hh * d / ww); ww = d; } }
+            else { if(hh > d){ ww = Math.round(ww * d / hh); hh = d; } }
+            c2.width = ww; c2.height = hh;
+            const cx = c2.getContext('2d');
+            cx.clearRect(0,0,ww,hh);
+            cx.drawImage(img, 0, 0, ww, hh);
+            const url = c2.toDataURL('image/png');
+            if(url.length <= TARGET_CHARS || idx === dims.length - 1){
+              if(url.length <= TARGET_CHARS){
+                resolve(url);
+              } else {
+                // PNG masih kebesaran di ukuran terkecil, fallback ke JPEG kualitas rendah
+                const urlJpeg = canvas.toDataURL('image/jpeg', 0.5);
+                if(urlJpeg.length <= TARGET_CHARS){
+                  resolve(urlJpeg);
+                } else {
+                  reject(new Error('gambar tetap terlalu besar setelah dikompres maksimal'));
+                }
+              }
+              return;
+            }
+            idx++;
+            tryPng();
+          }
+          tryPng();
         };
         img.src = reader.result;
       };
@@ -487,10 +524,6 @@
     try{
       setStatus('Menyiapkan stiker…');
       const dataUrl = await resizeImageFile(file, 220);
-      if(dataUrl.length > 300000){
-        setStatus('Gambar masih terlalu besar, coba gambar lain.');
-        return;
-      }
       customStickers.unshift(dataUrl);
       customStickers = customStickers.slice(0, 12);
       try{ localStorage.setItem('ruangbicara-custom-stickers', JSON.stringify(customStickers)); }catch(e){}
@@ -499,7 +532,7 @@
       closePanels();
       setStatus('Tersambung');
     }catch(err){
-      setStatus('Gagal memproses gambar, coba lagi.');
+      setStatus(err.message || 'Gagal memproses gambar, coba lagi.');
     }
   });
 
@@ -637,13 +670,16 @@
     if(!text || !roomId) return;
     sendBtn.disabled = true;
     try{
-      const msgs = await fetchMessages();
+      let msgs = await fetchMessages();
       msgs.push({sender: myName, text: text, ts: Date.now(), type: type || 'text'});
+      if(msgs.length > 200){
+        msgs = msgs.slice(msgs.length - 200);
+      }
       await pushMessages(msgs);
       lastCount = msgs.length;
       render(msgs);
     }catch(err){
-      setStatus('Pesan gagal terkirim, coba lagi.');
+      setStatus('Pesan gagal terkirim (mungkin riwayat chat sudah terlalu besar). Coba lagi.');
     }finally{
       sendBtn.disabled = false;
     }
