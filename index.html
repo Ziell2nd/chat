@@ -104,7 +104,6 @@
     line-height:1.6;
   }
 
-  /* message wrapper: sized to content, capped, no ambiguous flex-basis nesting */
   .msg{
     display:flex;
     flex-direction:column;
@@ -134,26 +133,6 @@
     border: 1px solid var(--line);
     color: var(--ink);
     border-bottom-left-radius: 4px;
-  }
-  .bubble.sticker{
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none;
-    font-size: 46px;
-    padding: 0;
-    line-height:1.1;
-  }
-  .bubble.sticker-img{
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none;
-    padding: 0;
-  }
-  .bubble.sticker-img img{
-    max-width: 160px;
-    max-height: 160px;
-    border-radius: 14px;
-    display:block;
   }
   .meta{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -204,7 +183,7 @@
   button:hover{ background: var(--sage-deep); }
   button:disabled{ background:#c8c3b6; cursor:default; }
 
-  #emoji-toggle, #sticker-toggle{
+  #emoji-toggle{
     background: #fff;
     border: 1px solid var(--line);
     color: var(--sage-deep);
@@ -215,15 +194,15 @@
     border-radius: 14px;
     flex-shrink:0;
   }
-  #emoji-toggle:hover, #sticker-toggle:hover{ background: #fff8ec; }
+  #emoji-toggle:hover{ background: #fff8ec; }
 
-  #emoji-panel, #sticker-panel{
+  #emoji-panel{
     display:none;
     position:absolute;
     bottom: 60px;
     left: 4px;
     right: 4px;
-    max-height: 220px;
+    max-height: 240px;
     overflow-y:auto;
     background: #fff;
     border: 1px solid var(--line);
@@ -231,12 +210,20 @@
     box-shadow: 0 8px 24px rgba(47,42,36,0.15);
     padding: 10px;
     z-index: 15;
-  }
-  #emoji-panel.open, #sticker-panel.open{ display:grid; }
-  #emoji-panel{
     grid-template-columns: repeat(8, 1fr);
     gap: 4px;
   }
+  #emoji-panel.open{ display:grid; }
+  #emoji-panel .cat-label{
+    grid-column: 1 / -1;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a99e8c;
+    padding: 6px 2px 2px;
+  }
+  #emoji-panel .cat-label:first-child{ padding-top: 0; }
   #emoji-panel button{
     all:unset;
     cursor:pointer;
@@ -247,44 +234,6 @@
     height:auto;
   }
   #emoji-panel button:hover{ background: #f2ede4; }
-  #sticker-panel{
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-  #sticker-panel button{
-    all:unset;
-    cursor:pointer;
-    font-size: 30px;
-    text-align:center;
-    padding: 10px 0;
-    border-radius: 10px;
-    height:auto;
-  }
-  #sticker-panel button:hover{ background: #f2ede4; }
-  #sticker-panel .upload-tile{
-    font-size: 20px !important;
-    color: var(--sage-deep);
-    border: 1px dashed var(--line) !important;
-  }
-  #sticker-panel .custom-thumb{
-    padding: 4px !important;
-  }
-  #sticker-panel .custom-thumb img{
-    width: 100%;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 8px;
-    display:block;
-  }
-  #sticker-panel .section-label{
-    grid-column: 1 / -1;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #a99e8c;
-    padding: 4px 2px 0;
-  }
 
   /* name overlay */
   #name-overlay{
@@ -319,8 +268,9 @@
     border-radius: 12px;
     border: 1px solid var(--line);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 12px;
+    -webkit-appearance: none;
   }
   #name-input:focus{ outline: 2px solid var(--sage); outline-offset:1px; }
   #name-card button{ width:100%; padding: 11px 0; }
@@ -336,7 +286,7 @@
   <div id="name-card">
     <div class="eyebrow">Sebelum masuk</div>
     <h2>Siapa namamu?</h2>
-    <p>Nama ini dipakai supaya pesan kalian berdua bisa dibedakan. Diminta lagi tiap buka halaman ini.</p>
+    <p>Ketuk kolom di bawah ini untuk mulai mengetik. Nama dipakai supaya pesan kalian berdua bisa dibedakan, dan diminta lagi tiap buka halaman ini.</p>
     <input id="name-input" type="text" placeholder="Nama kamu" maxlength="24" autocomplete="off">
     <button id="name-submit">Masuk ke ruang bicara</button>
   </div>
@@ -356,13 +306,10 @@
 
   <form id="send-form">
     <button type="button" id="emoji-toggle" title="Emoji">🙂</button>
-    <button type="button" id="sticker-toggle" title="Stiker">✨</button>
     <textarea id="msg-input" rows="1" placeholder="Tulis sesuatu…" maxlength="2000"></textarea>
     <button type="submit" id="send-btn">Kirim</button>
 
     <div id="emoji-panel"></div>
-    <div id="sticker-panel"></div>
-    <input type="file" id="sticker-file" accept="image/*" style="display:none">
   </form>
 </main>
 
@@ -371,14 +318,13 @@
   const API_BASE = "https://jsonblob.com/api/jsonBlob";
   const POLL_MS = 4000;
 
-  const EMOJIS = ["😀","😄","😊","😍","🥰","😘","😉","😜","🤪","🤔",
-                  "😅","😂","🥲","😭","😢","😤","😡","🥺","😴","🤗",
-                  "😎","🙄","😬","🤝","👍","👎","🙏","👏","💪","✌️",
-                  "❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💯",
-                  "🔥","✨","🎉","🎮","☕","🌿","🌙","⭐","🌸","☀️"];
-
-  const STICKERS = ["🕊️ damai","🌿 santai","☕ istirahat dulu","🤝 kita bicarain",
-                     "💚 aku dengerin","🙏 makasih ya","😌 pelan-pelan","🎮 main bareng?"];
+  const EMOJI_GROUPS = [
+    { label: "Senyum", items: ["😀","😄","😁","😊","🙂","😉","😌","😇","🤗","😅","😂","🤣"] },
+    { label: "Perasaan", items: ["🥰","😍","😘","🤔","😐","😑","😴","🥱","😬","🙄","😳","🤫"] },
+    { label: "Sedih & Capek", items: ["😢","😭","😔","😞","😟","😩","😫","🥺","😤","😡","😠","💔"] },
+    { label: "Tangan & Hati", items: ["👍","👎","🙏","👏","🤝","✌️","💪","❤️","🧡","💛","💚","💙","💜","🤍","💯"] },
+    { label: "Lain-lain", items: ["🔥","✨","🎉","☕","🌿","🌙","⭐","🌸","☀️","🎮","🐱","🐶"] }
+  ];
 
   const params = new URLSearchParams(location.search);
   let roomId = params.get('room');
@@ -396,159 +342,27 @@
   const nameInput = document.getElementById('name-input');
   const nameSubmit = document.getElementById('name-submit');
   const emojiToggle = document.getElementById('emoji-toggle');
-  const stickerToggle = document.getElementById('sticker-toggle');
   const emojiPanel = document.getElementById('emoji-panel');
-  const stickerPanel = document.getElementById('sticker-panel');
-  const stickerFileInput = document.getElementById('sticker-file');
 
-  let customStickers = [];
-  try{
-    const saved = localStorage.getItem('ruangbicara-custom-stickers');
-    if(saved) customStickers = JSON.parse(saved);
-  }catch(e){ /* localStorage tidak tersedia, lanjut tanpa persist */ }
-
-  EMOJIS.forEach(function(e){
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = e;
-    b.addEventListener('click', function(){ insertAtCursor(e); });
-    emojiPanel.appendChild(b);
-  });
-
-  function renderStickerPanel(){
-    stickerPanel.innerHTML = '';
-
-    const uploadBtn = document.createElement('button');
-    uploadBtn.type = 'button';
-    uploadBtn.className = 'upload-tile';
-    uploadBtn.innerHTML = '📤<br><span style="font-size:10px">Upload</span>';
-    uploadBtn.addEventListener('click', function(){ stickerFileInput.click(); });
-    stickerPanel.appendChild(uploadBtn);
-
-    STICKERS.forEach(function(s){
+  EMOJI_GROUPS.forEach(function(group){
+    const label = document.createElement('div');
+    label.className = 'cat-label';
+    label.textContent = group.label;
+    emojiPanel.appendChild(label);
+    group.items.forEach(function(e){
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = s.split(' ')[0];
-      b.title = s;
-      b.addEventListener('click', function(){ sendSticker(s, 'sticker'); closePanels(); });
-      stickerPanel.appendChild(b);
+      b.textContent = e;
+      b.addEventListener('click', function(){ insertAtCursor(e); });
+      emojiPanel.appendChild(b);
     });
-
-    if(customStickers.length){
-      const label = document.createElement('div');
-      label.className = 'section-label';
-      label.textContent = 'Stiker kamu';
-      stickerPanel.appendChild(label);
-
-      customStickers.forEach(function(dataUrl){
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'custom-thumb';
-        b.innerHTML = '<img src="' + dataUrl + '" alt="stiker">';
-        b.addEventListener('click', function(){ sendSticker(dataUrl, 'image'); closePanels(); });
-        stickerPanel.appendChild(b);
-      });
-    }
-  }
-  renderStickerPanel();
-
-  function resizeImageFile(file, maxDim){
-    return new Promise(function(resolve, reject){
-      const reader = new FileReader();
-      reader.onerror = function(){ reject(new Error('gagal membaca file')); };
-      reader.onload = function(){
-        const img = new Image();
-        img.onerror = function(){ reject(new Error('format gambar tidak didukung. coba screenshot lalu simpan sebagai JPG/PNG')); };
-        img.onload = function(){
-          let w = img.width, h = img.height;
-          if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
-          else { if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-
-          // isi putih dulu sebagai dasar (untuk foto tanpa transparansi / JPEG)
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0,0,w,h);
-          ctx.drawImage(img, 0, 0, w, h);
-
-          const TARGET_CHARS = 120000; // batas aman ukuran base64 (~90KB)
-
-          // coba PNG dulu (biar stiker transparan tetap bagus), turunkan ukuran kalau kebesaran
-          let dims = [maxDim, 180, 140, 100, 70];
-          let idx = 0;
-          function tryPng(){
-            const c2 = document.createElement('canvas');
-            const d = dims[idx];
-            let ww = w, hh = h;
-            if(ww > hh){ if(ww > d){ hh = Math.round(hh * d / ww); ww = d; } }
-            else { if(hh > d){ ww = Math.round(ww * d / hh); hh = d; } }
-            c2.width = ww; c2.height = hh;
-            const cx = c2.getContext('2d');
-            cx.clearRect(0,0,ww,hh);
-            cx.drawImage(img, 0, 0, ww, hh);
-            const url = c2.toDataURL('image/png');
-            if(url.length <= TARGET_CHARS || idx === dims.length - 1){
-              if(url.length <= TARGET_CHARS){
-                resolve(url);
-              } else {
-                // PNG masih kebesaran di ukuran terkecil, fallback ke JPEG kualitas rendah
-                const urlJpeg = canvas.toDataURL('image/jpeg', 0.5);
-                if(urlJpeg.length <= TARGET_CHARS){
-                  resolve(urlJpeg);
-                } else {
-                  reject(new Error('gambar tetap terlalu besar setelah dikompres maksimal'));
-                }
-              }
-              return;
-            }
-            idx++;
-            tryPng();
-          }
-          tryPng();
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  stickerFileInput.addEventListener('change', async function(){
-    const file = stickerFileInput.files[0];
-    stickerFileInput.value = '';
-    if(!file) return;
-    if(!file.type.startsWith('image/')){
-      setStatus('File harus berupa gambar.');
-      return;
-    }
-    try{
-      setStatus('Menyiapkan stiker…');
-      const dataUrl = await resizeImageFile(file, 220);
-      customStickers.unshift(dataUrl);
-      customStickers = customStickers.slice(0, 12);
-      try{ localStorage.setItem('ruangbicara-custom-stickers', JSON.stringify(customStickers)); }catch(e){}
-      renderStickerPanel();
-      await sendSticker(dataUrl, 'image');
-      closePanels();
-      setStatus('Tersambung');
-    }catch(err){
-      setStatus(err.message || 'Gagal memproses gambar, coba lagi.');
-    }
   });
 
   function closePanels(){
     emojiPanel.classList.remove('open');
-    stickerPanel.classList.remove('open');
   }
   emojiToggle.addEventListener('click', function(){
-    const willOpen = !emojiPanel.classList.contains('open');
-    closePanels();
-    if(willOpen) emojiPanel.classList.add('open');
-  });
-  stickerToggle.addEventListener('click', function(){
-    const willOpen = !stickerPanel.classList.contains('open');
-    closePanels();
-    if(willOpen) stickerPanel.classList.add('open');
+    emojiPanel.classList.toggle('open');
   });
   document.addEventListener('click', function(e){
     if(!form.contains(e.target)) closePanels();
@@ -619,14 +433,9 @@
       const mine = m.sender === myName;
       const side = mine ? 'me' : 'them';
       const safeName = escapeHtml(m.sender);
-      const isSticker = m.type === 'sticker';
-      const isImage = m.type === 'image';
-      const bubbleClass = 'bubble' + (isSticker ? ' sticker' : '') + (isImage ? ' sticker-img' : '');
-      const bubbleInner = isImage
-        ? '<img src="' + m.text + '" alt="stiker">'
-        : escapeHtml(m.text);
+      const safeText = escapeHtml(m.text);
       return '<div class="msg ' + side + '">' +
-          '<div class="' + bubbleClass + '">' + bubbleInner + '</div>' +
+          '<div class="bubble">' + safeText + '</div>' +
           '<div class="meta">' + (mine ? '' : '<span class="name">' + safeName + '</span> · ') + fmtTime(m.ts) + '</div>' +
       '</div>';
     }).join('');
@@ -666,12 +475,12 @@
     }
   }
 
-  async function sendMessage(text, type){
+  async function sendMessage(text){
     if(!text || !roomId) return;
     sendBtn.disabled = true;
     try{
       let msgs = await fetchMessages();
-      msgs.push({sender: myName, text: text, ts: Date.now(), type: type || 'text'});
+      msgs.push({sender: myName, text: text, ts: Date.now(), type: 'text'});
       if(msgs.length > 200){
         msgs = msgs.slice(msgs.length - 200);
       }
@@ -679,14 +488,10 @@
       lastCount = msgs.length;
       render(msgs);
     }catch(err){
-      setStatus('Pesan gagal terkirim (mungkin riwayat chat sudah terlalu besar). Coba lagi.');
+      setStatus('Pesan gagal terkirim, coba lagi.');
     }finally{
       sendBtn.disabled = false;
     }
-  }
-
-  function sendSticker(s, type){
-    return sendMessage(s, type || 'sticker');
   }
 
   form.addEventListener('submit', async function(e){
@@ -694,7 +499,7 @@
     const text = input.value.trim();
     if(!text) return;
     closePanels();
-    await sendMessage(text, 'text');
+    await sendMessage(text);
     input.value = '';
     input.style.height = 'auto';
     input.focus();
@@ -721,7 +526,6 @@
   nameInput.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ nameSubmit.click(); }
   });
-  nameInput.focus();
 })();
 </script>
 
